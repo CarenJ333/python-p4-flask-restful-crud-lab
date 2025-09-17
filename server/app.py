@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, request
 from flask_migrate import Migrate
 from flask_restful import Api, Resource
 
@@ -21,7 +21,7 @@ class Plants(Resource):
 
     def get(self):
         plants = [plant.to_dict() for plant in Plant.query.all()]
-        return make_response(jsonify(plants), 200)
+        return plants, 200
 
     def post(self):
         data = request.get_json()
@@ -35,8 +35,8 @@ class Plants(Resource):
         db.session.add(new_plant)
         db.session.commit()
 
-        return make_response(new_plant.to_dict(), 201)
-
+        return new_plant.to_dict(), 201
+  
 
 api.add_resource(Plants, '/plants')
 
@@ -44,8 +44,32 @@ api.add_resource(Plants, '/plants')
 class PlantByID(Resource):
 
     def get(self, id):
-        plant = Plant.query.filter_by(id=id).first().to_dict()
-        return make_response(jsonify(plant), 200)
+        plant = Plant.query.filter_by(id=id).first()
+        if not plant:
+            return {"error": "Plant not found"}, 404
+        return plant.to_dict(), 200
+
+    def patch(self, id):
+        record = Plant.query.filter_by(id=id).first()
+        if not record:
+            return {"error": "Plant not found"}, 404
+
+        data = request.get_json()
+        for attr, value in data.items():
+            setattr(record, attr, value)
+
+        db.session.commit()
+        return record.to_dict(), 200 
+
+    def delete(self, id):
+        record = Plant.query.filter_by(id=id).first()
+        if not record:
+            return {"error": "Plant not found"}, 404
+
+        db.session.delete(record)
+        db.session.commit()
+
+        return "", 204
 
 
 api.add_resource(PlantByID, '/plants/<int:id>')
